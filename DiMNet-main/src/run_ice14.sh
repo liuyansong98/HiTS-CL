@@ -7,9 +7,9 @@ python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --d
 python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --decay 1e-4 --gpu 1 --test 1
 
 # online train valid
-python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --decay 1e-4 --gpu 2 --test 2 \
+python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --decay 1e-4 --gpu 1 --test 2 \
 --temperature 2 --distill_weight 1 --con_description continual_learning
 
 # online train test
-python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --decay 1e-4 --gpu 2 --test 3 \
+python main.py -d ICEWS14 --history_len 10 --num_head 4 --num_ly 3 --topk 50 --decay 1e-4 --gpu 1 --test 3 \
 --temperature 2 --distill_weight 1 --con_description continual_learning
