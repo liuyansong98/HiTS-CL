@@ -675,36 +675,23 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
             ft_final_score_distill, cl_loss = model(ft_history_glist, ft_triple)
             pred_loss = model.get_loss(ft_final_score_distill, ft_triple[:, 1])
             loss_ft = pred_loss + cl_loss
-            distill_loss1_val = torch.zeros(1).cuda().to(device)
-            distill_loss2_val = torch.zeros(1).cuda().to(device)
+
             distill_loss1_ft = torch.zeros(1).cuda().to(device)
             distill_loss2_ft = torch.zeros(1).cuda().to(device)
             # ablation w/o adaptive temperature
-            # T_tch1_val = 1
-            # T_tch2_val = 1
+
             # T_tch1_ft = 1
             # T_tch2_ft = 1
             T = 1
-            T_tch1_val = cal_entropy1(val_final_score_init, args.temperature)[valid_diff_mask_time_i]
-            T_tch2_val = cal_entropy1(val_final_score_c, args.temperature)[valid_diff_mask_time_c]
+
             T_tch1_ft = cal_entropy1(ft_final_score_init, args.temperature)[ft_diff_mask_time_i]
             T_tch2_ft = cal_entropy1(ft_final_score_c, args.temperature)[ft_diff_mask_time_c]
 
             # ablation w/o adaptive sample
-            # T_tch1_val = cal_entropy1(val_final_score_init, args.temperature)
-            # T_tch2_val = cal_entropy1(val_final_score_c, args.temperature)
+
             # T_tch1_ft = cal_entropy1(ft_final_score_init, args.temperature)
             # T_tch2_ft = cal_entropy1(ft_final_score_c, args.temperature)
 
-            if torch.sum(valid_diff_mask_time_i).item() > 0:
-                soft_teacher1_val = F.softmax(val_final_score_init[valid_diff_mask_time_i].detach() / T_tch1_val,
-                                              dim=1)
-                soft_student1_val = F.log_softmax(val_final_score_distill[valid_diff_mask_time_i] / T_tch1_val, dim=1)
-                distill_loss1_val = F.kl_div(soft_student1_val, soft_teacher1_val, reduction='batchmean')
-            if torch.sum(valid_diff_mask_time_c).item() > 0:
-                soft_teacher2_val = F.softmax(val_final_score_c[valid_diff_mask_time_c].detach() / T_tch2_val, dim=1)
-                soft_student2_val = F.log_softmax(val_final_score_distill[valid_diff_mask_time_c] / T_tch2_val, dim=1)
-                distill_loss2_val = F.kl_div(soft_student2_val, soft_teacher2_val, reduction='batchmean')
 
             if torch.sum(ft_diff_mask_time_i).item() > 0:
                 soft_teacher1_ft = F.softmax(ft_final_score_init[ft_diff_mask_time_i].detach() / T_tch1_ft, dim=1)
@@ -720,15 +707,7 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
                 break
 
             # ablation w/o adaptive sample
-            # soft_teacher1_val = F.softmax(val_final_score_init.detach() / T_tch1_val,
-            #                               dim=1)
-            # soft_student1_val = F.log_softmax(val_final_score_distill / T_tch1_val, dim=1)
-            # distill_loss1_val = F.kl_div(soft_student1_val, soft_teacher1_val, reduction='batchmean')
-            #
-            # soft_teacher2_val = F.softmax(val_final_score_c.detach() / T_tch2_val, dim=1)
-            # soft_student2_val = F.log_softmax(val_final_score_distill / T_tch2_val, dim=1)
-            # distill_loss2_val = F.kl_div(soft_student2_val, soft_teacher2_val, reduction='batchmean')
-            #
+
             # soft_teacher1_ft = F.softmax(ft_final_score_init.detach() / T_tch1_ft, dim=1)
             # soft_student1_ft = F.log_softmax(ft_final_score_distill / T_tch1_ft, dim=1)
             # distill_loss1_ft = F.kl_div(soft_student1_ft, soft_teacher1_ft, reduction='batchmean')
@@ -738,8 +717,7 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
             # distill_loss2_ft = F.kl_div(soft_student2_ft, soft_teacher2_ft, reduction='batchmean')
 
 
-            distill_loss = (init_weight_val * distill_loss1_val + continue_weight_val * distill_loss2_val +
-                            init_weight_ft * distill_loss1_ft + continue_weight_ft * distill_loss2_ft)
+            distill_loss = (init_weight_ft * distill_loss1_ft + continue_weight_ft * distill_loss2_ft)
             # distill_loss = distill_loss1_val + distill_loss1_ft
             total_loss = distill_loss * args.distill_weight + loss_ft
             total_losses.append(total_loss.item())
@@ -755,8 +733,7 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
                 num_nodes)
             print(f"distill_epoch:{distill_epoch}, mrr_filter_valid_snap:{mrr_filter_valid_snap}, "
                   f"total_loss:{total_loss.item():.3f}, "
-                  f"distill_loss:{distill_loss.item():.3f}, distill_loss1:{distill_loss1_val.item():.3f},"
-                  f"distill_loss2:{distill_loss2_val.item():.3f}")
+                  f"distill_loss:{distill_loss.item():.3f}")
             # update best_mrr_distill
             distill_epoch += 1
             if mrr_filter_valid_snap <= best_mrr_distill:
