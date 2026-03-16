@@ -1,4 +1,4 @@
-# Disentangled Multi-span Evolutionary Network against Temporal Knowledge Graph Reasoning
+# DiMNet+HiTS-CL
 
 
 ## Quick Start
