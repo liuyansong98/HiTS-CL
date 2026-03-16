@@ -274,7 +274,7 @@ def train_and_validate(args, model, train_list, valid_list, test_list, num_nodes
             patience -= 1
             print("---------------------------------")
     end_train_time = time.perf_counter()
-    print(f"DiMNet训练时间(80% train): {end_train_time - start_train_time:.4f} 秒")
+    print(f"DiMNet训练时间: {end_train_time - start_train_time:.4f} 秒")
     # testing
 
     print("\nFinal eval test dataset with best model:...")
@@ -328,18 +328,7 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
     ranks_raw_cold_o, ranks_filter_cold_o, ranks_raw_cold_so, ranks_filter_cold_so = [], [], [], []
 
     # 初始化历史记录memory
-    valid_history_entity_dic: Dict[(int, int), ARCCache1] = {}  # 定义一个空字典(s,r)->LRUcache
-    train_history_entity_dic: Dict[(int, int), ARCCache1] = {}  # 定义一个空字典(s,r)->LRUcache
     test_history_entity_dic: Dict[(int, int), ARCCache1] = {}  # 定义一个空字典(s,r)->LRUcache
-    for i in range(num_nodes):
-        for j in range(2 * num_rels):
-            if history_cap[i * 2 * num_rels + j] == 0:
-                continue
-            else:
-                # valid_history_entity_dic[(i, j)] = ARCCache1(history_cap[i * 2 * num_rels + j])
-                # train_history_entity_dic[(i, j)] = ARCCache1(history_cap[i * 2 * num_rels + j])
-                test_history_entity_dic[(i, j)] = ARCCache1(history_cap[i * 2 * num_rels + j])
-    # all_tail_seq = sp.csr_matrix(([], ([], [])), shape=(num_nodes * num_rels, num_nodes))
     # 初始化历史记录 和历史实体指示矩阵
     for snap in history_data_list[:-2]:
         tmp_src_l = snap[:, 0]
@@ -347,47 +336,23 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
         tmp_dst_l = snap[:, 2]
         tmp_ts_l = snap[:, 3]
         for i in range(len(tmp_src_l)):
-            test_history_entity_dic[tmp_src_l[i], tmp_e_idx_l[i]].put(tmp_dst_l[i], tmp_ts_l[i])
+            idx = tmp_src_l[i] * 2 * num_rels + tmp_e_idx_l[i]
+            if idx not in test_history_entity_dic:
+                cap = history_cap[idx]
+                test_history_entity_dic[idx] = ARCCache1(cap)
+            test_history_entity_dic[idx].put(tmp_dst_l[i], tmp_ts_l[i])
         for i in range(len(tmp_src_l)):
-            test_history_entity_dic[tmp_dst_l[i], tmp_e_idx_l[i] + num_rels].put(tmp_src_l[i], tmp_ts_l[i])
+            idx = tmp_dst_l[i] * 2 * num_rels + tmp_e_idx_l[i] + num_rels
+            if idx not in test_history_entity_dic:
+                cap = history_cap[idx]
+                test_history_entity_dic[idx] = ARCCache1(cap)
+            test_history_entity_dic[idx].put(tmp_src_l[i], tmp_ts_l[i])
         for element in tmp_dst_l:
             count_dict_o[element] = count_dict_o.get(element, 0) + 1
             count_dict_so[element] = count_dict_so.get(element, 0) + 1
         for element in tmp_src_l:
             count_dict_so[element] = count_dict_so.get(element, 0) + 1
-        # row = tmp_src_l * num_rels + tmp_e_idx_l
-        # col = tmp_dst_l
-        # d1 = np.ones(len(row))
-        # tmp_tail_seq = sp.csr_matrix((d1, (row, col)), shape=(num_nodes * num_rels, num_nodes))
-        # all_tail_seq = all_tail_seq + tmp_tail_seq
-    tmp_src_l = history_data_list[-2][:, 0]
-    tmp_e_idx_l = history_data_list[-2][:, 1]
-    tmp_dst_l = history_data_list[-2][:, 2]
-    tmp_ts_l = history_data_list[-2][:, 3]
-    for i in range(len(tmp_src_l)):
-        test_history_entity_dic[tmp_src_l[i], tmp_e_idx_l[i]].put(tmp_dst_l[i], tmp_ts_l[i])
-    for i in range(len(tmp_src_l)):
-        test_history_entity_dic[tmp_dst_l[i], tmp_e_idx_l[i] + num_rels].put(tmp_src_l[i], tmp_ts_l[i])
-    for element in tmp_dst_l:
-        count_dict_o[element] = count_dict_o.get(element, 0) + 1
-        count_dict_so[element] = count_dict_so.get(element, 0) + 1
-    for element in tmp_src_l:
-        count_dict_so[element] = count_dict_so.get(element, 0) + 1
-
-    tmp_src_l = history_data_list[-1][:, 0]
-    tmp_e_idx_l = history_data_list[-1][:, 1]
-    tmp_dst_l = history_data_list[-1][:, 2]
-    tmp_ts_l = history_data_list[-1][:, 3]
-    for i in range(len(tmp_src_l)):
-        test_history_entity_dic[tmp_src_l[i], tmp_e_idx_l[i]].put(tmp_dst_l[i], tmp_ts_l[i])
-    for i in range(len(tmp_src_l)):
-        test_history_entity_dic[tmp_dst_l[i], tmp_e_idx_l[i] + num_rels].put(tmp_src_l[i], tmp_ts_l[i])
-    for element in tmp_dst_l:
-        count_dict_o[element] = count_dict_o.get(element, 0) + 1
-        count_dict_so[element] = count_dict_so.get(element, 0) + 1
-    for element in tmp_src_l:
-        count_dict_so[element] = count_dict_so.get(element, 0) + 1
-
+    
     ranks_raw, ranks_filter, mrr_raw_list, mrr_filter_list = [], [], [], []
     ranks_raw_init, ranks_filter_init, mrr_raw_list_init, mrr_filter_list_init = [], [], [], []
     ranks_raw_enh, ranks_filter_enh, mrr_raw_list_enh, mrr_filter_list_enh = [], [], [], []
@@ -577,11 +542,15 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
             encoded_mask_his_mem = torch.zeros_like(test_pred).to(device)
             encoded_mask_fre = torch.zeros_like(test_pred).to(device)
             for j in range(len(src_idx_l)):
-                if len(test_history_entity_dic[src_idx_l[j], e_idx_l[j]].cache) == 0:
+                idx = src_idx_l[j] * 2 * num_rels + e_idx_l[j]
+                if idx not in test_history_entity_dic:
+                    continue
+                if len(test_history_entity_dic[idx].cache) == 0:
                     continue
                 else:
-                    key_o = list(test_history_entity_dic[src_idx_l[j], e_idx_l[j]].cache.keys())
-                    value_freq = list(test_history_entity_dic[src_idx_l[j], e_idx_l[j]].cache.values())
+                    idx = src_idx_l[j] * 2 * num_rels + e_idx_l[j]
+                    key_o = list(test_history_entity_dic[idx].cache.keys())
+                    value_freq = list(test_history_entity_dic[idx].cache.values())
                     value_t, freq_t = zip(*value_freq)
                     value_t, tail_fre = torch.tensor(value_t).to(device), torch.tensor(freq_t).to(device)
                     key_o = torch.tensor(key_o).to(device)
@@ -783,10 +752,17 @@ def continuous_test(args, model, history_graph_list, test_graph_list, history_da
         ts_l_cut_test = test_triples_input[:, 3]
         # 更新历史记录
         for i in range(len(src_l_cut_test)):
-            test_history_entity_dic[(src_l_cut_test[i], e_l_cut_test[i])].put(dst_l_cut_test[i], ts_l_cut_test[i])
+            idx = src_l_cut_test[i] * 2 * num_rels + e_l_cut_test[i]
+            if idx not in test_history_entity_dic:
+                cap = history_cap[idx]
+                test_history_entity_dic[idx] = ARCCache1(cap)
+            test_history_entity_dic[idx].put(dst_l_cut_test[i], ts_l_cut_test[i])
         for i in range(len(src_l_cut_test)):
-            test_history_entity_dic[(dst_l_cut_test[i], e_l_cut_test[i] + num_rels)].put(src_l_cut_test[i],
-                                                                                         ts_l_cut_test[i])
+            idx = dst_l_cut_test[i] * 2 * num_rels + e_l_cut_test[i]
+            if idx not in test_history_entity_dic:
+                cap = history_cap[idx]
+                test_history_entity_dic[idx] = ARCCache1(cap)
+            test_history_entity_dic[idx].put(src_l_cut_test[i], ts_l_cut_test[i])
         for element in dst_l_cut_test:
             count_dict_o[element] = count_dict_o.get(element, 0) + 1
             count_dict_so[element] = count_dict_so.get(element, 0) + 1
